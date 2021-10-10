@@ -5,7 +5,7 @@ import sys
 
 class Simplex(object):
 
-    def __init__(self, vector_C, vector_B, vector_limitation, row_names = None, col_names = None):
+    def __init__(self, vector_C, vector_B, vector_limitation, row_names = None, col_names = None, origin_vec_c=None):
         self.vec_c = vector_C
         if (len(self.vec_c) == len(vector_limitation[0])):
             self.vec_c.insert(0, 0)
@@ -28,6 +28,12 @@ class Simplex(object):
         else:
             self.col_names = col_names
             self.row_names = row_names
+
+        if (origin_vec_c is None):
+            self.origin_vec_c = vector_c
+        else:
+            self.origin_vec_c = origin_vec_c
+
 
         self.simplex_matrix.append(self.vec_c)
 
@@ -86,6 +92,26 @@ class Simplex(object):
             print("Разрешающий столбец:", self.col_names[self.res_col])
             print("Разрешающая строка:", self.row_names[self.res_row])
 
+    # проверка результата
+    def check_result(self):
+        print("Проверка:")
+        terms = []
+        for i in range(len(self.row_names) - 1):
+            if f"{self.var_name}{i + 1}" in self.row_names:
+                terms.append(np.round(self.simplex_matrix[self.row_names.index(f"{self.var_name}{i + 1}")][0], 2))
+            else:
+                terms.append(0)
+        result = 0
+        print(f"{self.func_name} = ", end='')
+        for i in range(len(terms)):
+            result += self.origin_vec_c[i + 1] * terms[i]
+            if (i == (len(terms) - 1)):
+                print(f" {self.origin_vec_c[i + 1]}*{terms[i]}", ' ',end='')
+            else:
+                print(f" {self.origin_vec_c[i + 1]}*{terms[i]}", '+', end='')
+        print("= ", result)
+    
+
     def change_basis(self):
 
         self.row_names[self.res_row], self.col_names[self.res_col] =\
@@ -127,9 +153,12 @@ class Simplex(object):
         new_vector_b = []
         for i in range(len(self.vec_b)):
             new_vector_b.append(tmp_matrix[i][0])
+        self.print_simplex_matrix()
+        self.check_result()
+
 
         # применение симплекс-метода над новым вариантом симплекс-таблицы
-        new_simplex_matrix = Simplex(new_vector_c, new_vector_b, new_matrix, self.row_names, self.col_names)
+        new_simplex_matrix = Simplex(new_vector_c, new_vector_b, new_matrix, self.row_names, self.col_names, origin_vec_c=self.origin_vec_c)
         self.flag_solution = new_simplex_matrix.launch()
 
     # проверка наличия опорного решения системы
@@ -158,8 +187,6 @@ class Simplex(object):
                 self.change_basis()
         else:
             print("Так как элементы S0 неотрицательны -> опорное решение")
-
-        self.print_simplex_matrix()
         if (self.flag_solution == False) and (self.flag_check == True):
             print("Не имеет опорного решения")
         else:
@@ -172,9 +199,10 @@ class Simplex(object):
                     print("Производим замену:", self.col_names[self.res_col], "<->",
                           self.row_names[self.res_row])
                     self.change_basis()
-            if (self.flag_solution == False) and (self.flag_check == True):
-                print("Имеет опорное решение, не имеет оптимального решения")
-                return 0
+                else:
+                    print("Имеет опорное решение, не имеет оптимального решения")
+                    return False
+
             if (self.flag_solution == False):
                 print("Оптимальное решение:")
                 answer = []
@@ -187,4 +215,3 @@ class Simplex(object):
                     print(f"X{i + 1}", "=", answer[i])
                 print("F = ", -np.round(self.simplex_matrix[len(self.row_names) - 1][0], 2))
                 return True
-
