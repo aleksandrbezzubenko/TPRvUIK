@@ -2,41 +2,68 @@ import numpy as np
 from prettytable import PrettyTable
 import sys
 
+from typing import List
+
+# транспонирование матрицы
+def matrix_transposition(matrix: List[List[int or float]]) -> List[List[int or float]]:
+    transposed_matrix = [[row[index] for row in matrix] for index in range(len(matrix[0]))]
+    return transposed_matrix
 
 class Simplex(object):
 
-    def __init__(self, vector_C, vector_B, vector_limitation, row_names = None, col_names = None, origin_vec_c=None):
-        self.vec_c = vector_C
+    def __init__(self, vector_c, vector_b, vector_limitation, task,
+                 need_transposition=False, row_names=None, col_names=None,
+                 origin_vec_c=None):
+        self.vec_c = vector_c
+        self.vec_b = vector_b
+        self.simplex_matrix = vector_limitation
+
+        self.task = task
+        if (self.task == "ПЗ ЛП"):
+            self.var_name = "X"
+            self.func_name = "F "
+        else:
+            self.var_name = "Y"
+            self.func_name = "G "
+            # изменение векторов перед первой итерацией, в случае двойственной задачи
+            if(need_transposition):
+                self.vec_c, self.vec_b = self.vec_b, self.vec_c
+                self.vec_c = [-elem for elem in self.vec_c]
+                self.vec_b = [-elem for elem in self.vec_b]
+
+                self.simplex_matrix = matrix_transposition(vector_limitation)
+                self.simplex_matrix = [[-elem for elem in row] for row in self.simplex_matrix]
+
         if (len(self.vec_c) == len(vector_limitation[0])):
             self.vec_c.insert(0, 0)
-        self.vec_b = vector_B
-        self.simplex_matrix = vector_limitation
+        self.simplex_matrix.append(self.vec_c)
         for i in range(len(self.vec_b)):
             self.simplex_matrix[i].insert(0, self.vec_b[i])
 
         self.res_row = 0
         self.res_col = 0
+
         self.flag_solution = False
 
+        # инициализация имён строк и столбцов
         if (row_names is None) and (col_names is None):
             self.col_names = ["S0"]
             self.row_names = []
             for i in range(len(self.vec_b)):
-                self.col_names.append(f"X{i + 1}")
-                self.row_names.append(f"X{i + 4}")
-            self.row_names.append("F ")
+                self.col_names.append(f"{self.var_name}{i + 1}")
+                self.row_names.append(f"{self.var_name}{i + 4}")
+            self.row_names.append(self.func_name)
         else:
             self.col_names = col_names
             self.row_names = row_names
 
+        # сохранение первоначального вектора С для проверки результатов
         if (origin_vec_c is None):
-            self.origin_vec_c = vector_c
+            self.origin_vec_c = self.vec_c
         else:
             self.origin_vec_c = origin_vec_c
 
-
-        self.simplex_matrix.append(self.vec_c)
-
+    #
     def print_simplex_matrix(self):
         print("Симплекс таблица")
         mytable = PrettyTable()
@@ -76,9 +103,12 @@ class Simplex(object):
             print("Разрешающий столбец:", self.col_names[self.res_col])
 
     # нахождение результирующих строк и столбцов при оптимальном решении
-    def get_optimum_res_elements(self):  #
-        max_col = max(self.simplex_matrix[len(self.vec_b)])
-        self.res_col = self.simplex_matrix[len(self.vec_b)].index(max_col)
+    def get_optimum_res_elements(self):
+        max_col = 0
+        for i, elem in enumerate(self.simplex_matrix[len(self.col_names) - 1]):
+            if i > 0 and elem > max_col:
+                max_col = elem
+                self.res_col = i
         min_row = sys.maxsize
         for j in range(int(len(self.vec_b))):
             if (self.simplex_matrix[j][self.res_col] != 0):
@@ -87,7 +117,6 @@ class Simplex(object):
                     self.res_row = j
                     min_row = tmp
                     self.flag_solution = True
-
         if (self.flag_solution == True):
             print("Разрешающий столбец:", self.col_names[self.res_col])
             print("Разрешающая строка:", self.row_names[self.res_row])
@@ -110,8 +139,8 @@ class Simplex(object):
             else:
                 print(f" {self.origin_vec_c[i + 1]}*{terms[i]}", '+', end='')
         print("= ", result)
-    
 
+    # высчитываение новой таблицы
     def change_basis(self):
 
         self.row_names[self.res_row], self.col_names[self.res_col] =\
@@ -153,12 +182,13 @@ class Simplex(object):
         new_vector_b = []
         for i in range(len(self.vec_b)):
             new_vector_b.append(tmp_matrix[i][0])
+
         self.print_simplex_matrix()
         self.check_result()
 
-
         # применение симплекс-метода над новым вариантом симплекс-таблицы
-        new_simplex_matrix = Simplex(new_vector_c, new_vector_b, new_matrix, self.row_names, self.col_names, origin_vec_c=self.origin_vec_c)
+        new_simplex_matrix = Simplex(new_vector_c, new_vector_b, new_matrix, self.task,
+                                     row_names=self.row_names, col_names=self.col_names, origin_vec_c=self.origin_vec_c)
         self.flag_solution = new_simplex_matrix.launch()
 
     # проверка наличия опорного решения системы
@@ -185,8 +215,10 @@ class Simplex(object):
                 print("Производим замену:", self.col_names[self.res_col], "<->",
                       self.row_names[self.res_row])
                 self.change_basis()
+                return True
         else:
             print("Так как элементы S0 неотрицательны -> опорное решение")
+
         if (self.flag_solution == False) and (self.flag_check == True):
             print("Не имеет опорного решения")
         else:
@@ -202,16 +234,15 @@ class Simplex(object):
                 else:
                     print("Имеет опорное решение, не имеет оптимального решения")
                     return False
-
             if (self.flag_solution == False):
                 print("Оптимальное решение:")
                 answer = []
                 for i in range(len(self.row_names) - 1):
-                    if f"X{i + 1}" in self.row_names:
-                        answer.append(np.round(self.simplex_matrix[self.row_names.index(f"X{i + 1}")][0], 2))
+                    if f"{self.var_name}{i + 1}" in self.row_names:
+                        answer.append(np.round(self.simplex_matrix[self.row_names.index(f"{self.var_name}{i + 1}")][0], 2))
                     else:
                         answer.append(0)
                 for i in range(len(answer)):
-                    print(f"X{i + 1}", "=", answer[i])
-                print("F = ", -np.round(self.simplex_matrix[len(self.row_names) - 1][0], 2))
+                    print(f"{self.var_name}{i + 1}", "=", answer[i])
+                print(f"{self.func_name}= ", -np.round(self.simplex_matrix[len(self.row_names) - 1][0], 2))
                 return True
