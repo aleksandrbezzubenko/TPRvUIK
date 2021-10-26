@@ -16,8 +16,8 @@ if __name__ == '__main__':
     vector_C_2 = [2, 6, 7]
     vector_B_2 = [3, 8, 1]
     vector_Limitation_2 = [[3, 1, 1],
-                         [1, 2, 0],
-                         [0, 0.5, 2]]
+                           [1, 2, 0],
+                           [0, 0.5, 2]]
     simplex_method_2 = Simplex(vector_C_2, vector_B_2, vector_Limitation_2, "ДЗ ЛП", need_transposition=True)
     print("Исходная симплекс таблица имеет вид:")
     simplex_method_2.print_simplex_matrix()

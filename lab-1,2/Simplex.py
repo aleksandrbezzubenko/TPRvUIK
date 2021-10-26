@@ -22,17 +22,19 @@ class Simplex(object):
         if (self.task == "ПЗ ЛП"):
             self.var_name = "X"
             self.func_name = "F "
-        else:
+        elif (self.task == "ДЗ ЛП"):
             self.var_name = "Y"
             self.func_name = "G "
             # изменение векторов перед первой итерацией, в случае двойственной задачи
-            if(need_transposition):
+            if (need_transposition):
                 self.vec_c, self.vec_b = self.vec_b, self.vec_c
                 self.vec_c = [-elem for elem in self.vec_c]
                 self.vec_b = [-elem for elem in self.vec_b]
 
                 self.simplex_matrix = matrix_transposition(vector_limitation)
                 self.simplex_matrix = [[-elem for elem in row] for row in self.simplex_matrix]
+        else:
+            print("Incorrect problem statement!")
 
         if (len(self.vec_c) == len(vector_limitation[0])):
             self.vec_c.insert(0, 0)
@@ -63,7 +65,7 @@ class Simplex(object):
         else:
             self.origin_vec_c = origin_vec_c
 
-    #
+
     def print_simplex_matrix(self):
         print("Симплекс таблица")
         mytable = PrettyTable()
@@ -133,11 +135,11 @@ class Simplex(object):
         result = 0
         print(f"{self.func_name} = ", end='')
         for i in range(len(terms)):
-            result += self.origin_vec_c[i + 1] * terms[i]
+            result += -self.origin_vec_c[i + 1] * terms[i]
             if (i == (len(terms) - 1)):
-                print(f" {self.origin_vec_c[i + 1]}*{terms[i]}", ' ',end='')
+                print(f" {-self.origin_vec_c[i + 1]}*{terms[i]}", ' ',end='')
             else:
-                print(f" {self.origin_vec_c[i + 1]}*{terms[i]}", '+', end='')
+                print(f" {-self.origin_vec_c[i + 1]}*{terms[i]}", '+', end='')
         print("= ", result)
 
     # высчитываение новой таблицы
@@ -244,5 +246,5 @@ class Simplex(object):
                         answer.append(0)
                 for i in range(len(answer)):
                     print(f"{self.var_name}{i + 1}", "=", answer[i])
-                print(f"{self.func_name}= ", -np.round(self.simplex_matrix[len(self.row_names) - 1][0], 2))
+                print(f"{self.func_name}= ", np.round(self.simplex_matrix[len(self.row_names) - 1][0], 2))
                 return True
